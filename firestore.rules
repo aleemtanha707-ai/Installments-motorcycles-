@@ -1,0 +1,131 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: bikes
+    // Document ID: auto-generated
+    // Fields:
+    //   - name: string (required)
+    //   - company: string (required)
+    //   - price: number (required)
+    //   - down_payment: number (required)
+    //   - monthly: number (required)
+    //   - duration: number (required)
+    //   - image: string (required)
+    //   - description: string (optional)
+    //
+    // Collection: applications
+    // Document ID: auto-generated
+    // Fields:
+    //   - userId: string (required)
+    //   - bikeId: string (required)
+    //   - bikeName: string (required)
+    //   - status: string (required, enum: pending, approved, rejected)
+    //   - createdAt: timestamp (required)
+    //   - fullName: string (required)
+    //   - cnic: string (required)
+    //   - phone: string (required)
+    //   - city: string (required)
+    //   - income: number (required)
+    //   - address: string (required)
+    //
+    // Collection: users
+    // Document ID: userId (UID)
+    // Fields:
+    //   - name: string (required)
+    //   - email: string (required)
+    //   - role: string (required, enum: admin, user)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "aleemtanha707@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUrl(url) {
+      return url is string && (url.matches("^https://.*") || url.matches("^http://.*"));
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidBike(data) {
+      return data.name is string && data.name.size() > 0 && data.name.size() < 100 &&
+             data.company is string && data.company.size() > 0 && data.company.size() < 50 &&
+             data.price is number && data.price > 0 &&
+             data.down_payment is number && data.down_payment >= 0 &&
+             data.monthly is number && data.monthly > 0 &&
+             data.duration is number && data.duration > 0 &&
+             isValidUrl(data.image);
+    }
+
+    function isValidApplication(data) {
+      return data.userId == request.auth.uid &&
+             data.bikeId is string &&
+             data.bikeName is string &&
+             data.status in ['pending', 'approved', 'rejected'] &&
+             data.createdAt is timestamp &&
+             data.fullName is string && data.fullName.size() > 0 && data.fullName.size() < 100 &&
+             data.cnic is string && data.cnic.size() >= 13 && data.cnic.size() <= 15 &&
+             data.phone is string && data.phone.size() >= 10 && data.phone.size() <= 15 &&
+             data.city is string && data.city.size() > 0 &&
+             data.income is number && data.income > 0 &&
+             data.address is string && data.address.size() > 0 && data.address.size() < 500;
+    }
+
+    function isValidUser(data) {
+      return data.name is string && data.name.size() > 0 &&
+             data.email is string && isValidEmail(data.email) &&
+             data.role in ['admin', 'user'];
+    }
+
+    // ===============================================================
+    // Match Rules
+    // ===============================================================
+
+    match /bikes/{bikeId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin() && isValidBike(request.resource.data);
+    }
+
+    match /applications/{applicationId} {
+      allow read: if isAdmin() || (isAuthenticated() && resource.data.userId == request.auth.uid);
+      allow create: if isAuthenticated() && isValidApplication(request.resource.data);
+      allow update: if isAdmin() && 
+                    request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) &&
+                    request.resource.data.status in ['pending', 'approved', 'rejected'];
+      allow delete: if isAdmin();
+    }
+
+    match /users/{userId} {
+      allow read: if isAdmin() || isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == 'user';
+      allow update: if (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role) || isAdmin();
+    }
+  }
+}

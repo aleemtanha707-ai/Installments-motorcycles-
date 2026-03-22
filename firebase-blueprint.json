@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "Bike": {
+      "title": "Bike",
+      "description": "A motorcycle available for installment.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Model name of the bike." },
+        "company": { "type": "string", "description": "Manufacturer (e.g., Honda, Yamaha)." },
+        "price": { "type": "number", "description": "Total cash price." },
+        "down_payment": { "type": "number", "description": "Minimum down payment required." },
+        "monthly": { "type": "number", "description": "Monthly installment amount." },
+        "duration": { "type": "number", "description": "Installment duration in months." },
+        "image": { "type": "string", "description": "URL of the bike image." },
+        "description": { "type": "string", "description": "Detailed description of the bike." }
+      },
+      "required": ["name", "company", "price", "down_payment", "monthly", "duration", "image"]
+    },
+    "Application": {
+      "title": "Application",
+      "description": "An installment application submitted by a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the user who applied." },
+        "bikeId": { "type": "string", "description": "ID of the bike applied for." },
+        "bikeName": { "type": "string", "description": "Name of the bike at the time of application." },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"], "description": "Current status of the application." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of application." },
+        "fullName": { "type": "string", "description": "Applicant's full name." },
+        "cnic": { "type": "string", "description": "Applicant's CNIC number." },
+        "phone": { "type": "string", "description": "Applicant's phone number." },
+        "city": { "type": "string", "description": "Applicant's city." },
+        "income": { "type": "number", "description": "Applicant's monthly income." },
+        "address": { "type": "string", "description": "Applicant's residential address." }
+      },
+      "required": ["userId", "bikeId", "status", "createdAt", "fullName", "cnic", "phone", "city", "income", "address"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile information.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "User's display name." },
+        "email": { "type": "string", "format": "email", "description": "User's email address." },
+        "role": { "type": "string", "enum": ["admin", "user"], "description": "User's role in the system." }
+      },
+      "required": ["name", "email", "role"]
+    }
+  },
+  "firestore": {
+    "/bikes/{bikeId}": { "schema": "Bike", "description": "Collection of available motorcycles." },
+    "/applications/{applicationId}": { "schema": "Application", "description": "Collection of installment applications." },
+    "/users/{userId}": { "schema": "User", "description": "Collection of user profiles." }
+  }
+}
